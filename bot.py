@@ -16,7 +16,9 @@ logging.basicConfig(level=logging.DEBUG,
 token = os.getenv('TELEGRAM_TOKEN')
 
 chat_id = ''
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=17)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=15)
+VICTORY = 30
+victory_text = ''
 
 
 def setup_shippering_file(update: Update, context: CallbackContext):
@@ -39,6 +41,28 @@ def setup_shippering_file(update: Update, context: CallbackContext):
                     chat_ship[update.effective_chat.id]['user_counters'][chat_member.user.id] = 0
                 chat_ship[update.effective_chat.id]['last_couple'] = []
                 json.dump(chat_ship, counters_fp)
+
+
+def victory(update: Update, context: CallbackContext, winner1, winner2=None):
+    first_name1 = context.bot.get_chat_member(chat_id=update.effective_chat.id,
+                                              user_id=winner1).user.first_name
+    last_name1 = context.bot.get_chat_member(chat_id=update.effective_chat.id,
+                                             user_id=winner1).user.last_name
+    if winner2:
+        first_name2 = context.bot.get_chat_member(chat_id=update.effective_chat.id,
+                                                  user_id=winner2).user.first_name
+        last_name2 = context.bot.get_chat_member(chat_id=update.effective_chat.id,
+                                                 user_id=winner2).user.last_name
+
+    text = f'<a href="tg://user?id={winner1}">{first_name1} {last_name1}</a> ' if last_name1 else f'<a href="tg://user?id={winner1}">{first_name1}</a> '
+    if winner2:
+        text += f'e <a href="tg://user?id={winner2}">{first_name2} {last_name2}</a> hanno raggiunto {VICTORY} ship. \nCongratulazioni 👋' \
+            if last_name2 else f'e <a href="tg://user?id={winner2}">{first_name2}</a>' \
+                                f'hanno raggiunto {VICTORY} ship. \nCongratulazioni 👋'
+    else:
+        text += f'ha raggiunto {VICTORY} ship. \nCongratulazioni 👋'
+    logging.info(text)
+    return text
 
 
 def start(update: Update, context: CallbackContext):
@@ -64,6 +88,8 @@ def help(update: Update, context: CallbackContext):
 
 
 def shipping(update: Update, context: CallbackContext):
+    global victory_text
+
     setup_shippering_file(update, context)
     with open('counters.json') as counters_fp:
         try:
@@ -89,19 +115,21 @@ def shipping(update: Update, context: CallbackContext):
             if len(counters[str(update.effective_chat.id)]['last_couple']) > 10:
                 counters[str(update.effective_chat.id)]['last_couple'].pop(0)
                 counters[str(update.effective_chat.id)]['last_couple'].pop(0)
+            # if someone reached 30, winner
+            winners = []
+            if counters[str(update.effective_chat.id)]['user_counters'][user_id_shipped1] >= VICTORY:
+                winners.append(user_id_shipped1)
+            if counters[str(update.effective_chat.id)]['user_counters'][user_id_shipped2] >= VICTORY:
+                winners.append(user_id_shipped2)
+            if len(winners) > 0:
+                victory_text = victory(update, context, *winners)
 
-            counters[str(update.effective_chat.id)]['shippable'] = False
-            # write updates
-            with open('counters.json', 'w') as _counters_fp:
-                json.dump(counters, _counters_fp)
 
 
         else:
             # if the ship for today is picked, only need to pop from the stack
-            user_id_shipped2 = counters[str(update.effective_chat.id)]['last_couple'].pop()
-            user_id_shipped1 = counters[str(update.effective_chat.id)]['last_couple'].pop()
-        logging.info(counters[str(update.effective_chat.id)]['last_couple'])
-
+            user_id_shipped2 = counters[str(update.effective_chat.id)]['last_couple'][-1]
+            user_id_shipped1 = counters[str(update.effective_chat.id)]['last_couple'][-2]
 
         # find out how much needs to be waited to ship again
         now = datetime.today()
@@ -117,12 +145,20 @@ def shipping(update: Update, context: CallbackContext):
         first_name2 = context.bot.get_chat_member(chat_id=update.effective_chat.id,
                                                   user_id=user_id_shipped2).user.first_name
         last_name2 = context.bot.get_chat_member(chat_id=update.effective_chat.id,
-                                                 user_id=user_id_shipped2).user.last_name
-        text = 'La coppia del giorno:\n\n' if counters[str(update.effective_chat.id)]['shippable'] else 'La coppia del giorno è già stata scelta:\n\n'
+                                               user_id=user_id_shipped2).user.last_name
+        text = ''
+        if victory_text:
+            text += victory_text + '\n\n'
+        text += 'La coppia del giorno:\n\n' if counters[str(update.effective_chat.id)][
+            'shippable'] else 'La coppia del giorno è già stata scelta:\n\n'
         text += f'<a href="tg://user?id={user_id_shipped1}">{first_name1} {last_name1}</a> ' if last_name1 else f'<a href="tg://user?id={user_id_shipped1}">{first_name1}</a>'
         text += f'+ <a href="tg://user?id={user_id_shipped2}">{first_name2} {last_name2}</a> = ❤\n' if last_name2 else f'+ <a href="tg://user?id={user_id_shipped2}">{first_name2}</a> = ❤\n'
         text += f'La nuova coppia del giorno potrà essere scelta tra {hours} ore, {minutes} minuti e {seconds} secondi'
 
+        counters[str(update.effective_chat.id)]['shippable'] = False
+        # write updates
+        with open('counters.json', 'w') as _counters_fp:
+            json.dump(counters, _counters_fp)
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
 
 
@@ -159,8 +195,6 @@ def top_ship(update: Update, context: CallbackContext):
         ranking = sorted(id_items, key=lambda id_counter : id_counter[1], reverse=True)
         i = 1
         for rank in ranking:
-            logging.info(rank)
-            logging.info(type(rank))
             first_name = context.bot.get_chat_member(chat_id=update.effective_chat.id,
                                                       user_id=rank[0]).user.first_name
             last_name = context.bot.get_chat_member(chat_id=update.effective_chat.id,
@@ -171,16 +205,21 @@ def top_ship(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id=update.effective_chat.id, text=text, parse_mode='HTML')
 
 
-def reset(update: Update, context: CallbackContext):
-    setup_shippering_file(update, context)
+def restart_counter(update: Update):
     with open('counters.json') as counters_fp:
         counters = json.load(counters_fp)
         for user_id in counters[str(update.effective_chat.id)]['user_counters']:
             counters[str(update.effective_chat.id)]['user_counters'][user_id] = 0
-
+        counters[str(update.effective_chat.id)]['last_couple'] = []
+        counters[str(update.effective_chat.id)]['shippable'] = True
         with open('counters.json', 'w') as _counters_fp:
             json.dump(counters, _counters_fp)
 
+
+def reset(update: Update, context: CallbackContext):
+    setup_shippering_file(update, context)
+
+    restart_counter(update)
     context.bot.send_message(chat_id=update.effective_chat.id, text='Reset completato', parse_mode='HTML')
 
 
@@ -196,7 +235,6 @@ def callback_shipping():
                 json.dump(counters, _counters_fp)
         except json.JSONDecodeError as e:
             logging.error("Couldn't open file")
-
 
 
 def main():
