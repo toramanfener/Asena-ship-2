@@ -3,10 +3,13 @@ import os
 import json
 import math
 import random
-from telegram.ext import Updater, CommandHandler, CallbackContext, JobQueue
+import schedule
+import time
+import threading
+from telegram.ext import Updater, CommandHandler, CallbackContext, Filters
 from telegram import Update
 from dotenv import load_dotenv
-from datetime import time, datetime, timedelta
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -15,16 +18,15 @@ logging.basicConfig(level=logging.DEBUG,
 
 token = os.getenv('TELEGRAM_TOKEN')
 
-chat_id = ''
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=15)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=23)
 VICTORY = 30
 victory_text = ''
 
 
 def setup_shippering_file(update: Update, context: CallbackContext):
+
     if update.effective_chat.type != 'private':
-        global chat_id
-        chat_id = str(update.effective_chat.id)
+
         # initialize to 0 shipping counter if the file is empty
         chat_administrators = context.bot.get_chat_administrators(chat_id=update.effective_chat.id)
         with open('counters.json', 'r+') as counters_fp:
@@ -61,13 +63,16 @@ def victory(update: Update, context: CallbackContext, winner1, winner2=None):
                                 f'hanno raggiunto {VICTORY} ship. \nCongratulazioni 👋'
     else:
         text += f'ha raggiunto {VICTORY} ship. \nCongratulazioni 👋'
-    logging.info(text)
+
     return text
 
 
 def start(update: Update, context: CallbackContext):
 
     setup_shippering_file(update, context)
+
+    schedule.every().day.at("23:00").do(callback_shipping, update.effective_chat.id)
+    run_continuously()
 
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
            'Use /help for more info.'
@@ -98,7 +103,7 @@ def shipping(update: Update, context: CallbackContext):
         except json.JSONDecodeError as e:
             logging.error("UNABLE TO READ FILE")
             context.bot.send_message(chat_id=update.effective_chat.id, text='Oops, something went wrong 😅', parse_mode='HTML')
-        logging.info(counters[str(update.effective_chat.id)]['last_couple'])
+
         if counters[str(update.effective_chat.id)]['shippable']:
             # last key is not counted for randomization since it's the last ship
             ship1, ship2 = tuple(
@@ -223,19 +228,32 @@ def reset(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text='Reset completato', parse_mode='HTML')
 
 
-def callback_shipping():
+def callback_shipping(chat_id):
     global deadline
     deadline += timedelta(days=1)
     with open('counters.json', 'r') as counters_fp:
         try:
-            global chat_id
             counters = json.load(counters_fp)
-            counters[chat_id]['shippable'] = True
+            counters[str(chat_id)]['shippable'] = True
             with open('counters.json', 'w') as _counters_fp:
                 json.dump(counters, _counters_fp)
         except json.JSONDecodeError as e:
             logging.error("Couldn't open file")
 
+
+def run_continuously(interval=5):
+    cease_continuous_run = threading.Event()
+
+    class ScheduleThread(threading.Thread):
+        @classmethod
+        def run(cls):
+            while not cease_continuous_run.is_set():
+                schedule.run_pending()
+                time.sleep(interval)
+
+    continuous_thread = ScheduleThread()
+    continuous_thread.start()
+    return cease_continuous_run
 
 def main():
 
@@ -244,10 +262,10 @@ def main():
     dispatcher = updater.dispatcher
     start_handler = CommandHandler('start', start)
     help_handler = CommandHandler('help', help)
-    ship_handler = CommandHandler('shipping', shipping)
-    last_ship_handler = CommandHandler('last', last_ship)
-    top_ship_handler = CommandHandler('top', top_ship)
-    reset_handler = CommandHandler('reset', reset)
+    ship_handler = CommandHandler('shipping', shipping, Filters.group)
+    last_ship_handler = CommandHandler('last', last_ship, Filters.group)
+    top_ship_handler = CommandHandler('top', top_ship, Filters.group)
+    reset_handler = CommandHandler('reset', reset, Filters.group)
 
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(help_handler)
@@ -256,8 +274,6 @@ def main():
     dispatcher.add_handler(top_ship_handler)
     dispatcher.add_handler(reset_handler)
 
-    shipping_job = updater.job_queue
-    shipping_job.run_daily(callback_shipping, deadline.time())
 
     updater.start_polling()
 
