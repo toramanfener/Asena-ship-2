@@ -6,6 +6,7 @@ import random
 import schedule
 import time
 import threading
+import redis
 from telegram.ext import Updater, CommandHandler, CallbackContext, Filters
 from telegram import Update
 from dotenv import load_dotenv
@@ -16,33 +17,30 @@ load_dotenv()
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-token = os.getenv('TELEGRAM_TOKEN')
+TOKEN = os.getenv('TELEGRAM_TOKEN')
+
+logging.info(os.environ.get('TELEGRAM_TOKEN'))
 
 deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=23)
 VICTORY = 30
 victory_text = ''
+redis_server = redis.from_url(os.getenv('REDIS_URL'))
+PORT = int(os.environ.get('PORT', 5000))
 
-
-def setup_shippering_file(update: Update, context: CallbackContext):
+def setup_shippering_db(update: Update, context: CallbackContext):
 
     if update.effective_chat.type != 'private':
 
-        # initialize to 0 shipping counter if the file is empty
         chat_administrators = context.bot.get_chat_administrators(chat_id=update.effective_chat.id)
-        with open('counters.json', 'r+') as counters_fp:
-            try:
-                counters = json.load(counters_fp)
-            except json.JSONDecodeError as e:
-                logging.warning(e)
-                # empty file
-                chat_ship = {}
-                chat_ship[update.effective_chat.id] = {}
-                chat_ship[update.effective_chat.id]['shippable'] = True
-                chat_ship[update.effective_chat.id]['user_counters'] = {}
-                for chat_member in chat_administrators:
-                    chat_ship[update.effective_chat.id]['user_counters'][chat_member.user.id] = 0
-                chat_ship[update.effective_chat.id]['last_couple'] = []
-                json.dump(chat_ship, counters_fp)
+        chat_ship = {}
+        chat_ship[update.effective_chat.id] = {}
+        chat_ship[update.effective_chat.id]['shippable'] = True
+        chat_ship[update.effective_chat.id]['user_counters'] = {}
+        for chat_member in chat_administrators:
+            chat_ship[update.effective_chat.id]['user_counters'][chat_member.user.id] = 0
+        chat_ship[update.effective_chat.id]['last_couple'] = []
+        # set a single key containing an object like string, if the key doesn't exist already
+        redis_server.setnx(str(update.effective_chat.id), str(chat_ship[update.effective_chat.id]))
 
 
 def victory(update: Update, context: CallbackContext, winner1, winner2=None):
@@ -64,12 +62,14 @@ def victory(update: Update, context: CallbackContext, winner1, winner2=None):
     else:
         text += f'ha raggiunto {VICTORY} ship. \nCongratulazioni 👋'
 
+    text += 'Se vuoi ricominciare usa /reset'
+
     return text
 
 
 def start(update: Update, context: CallbackContext):
 
-    setup_shippering_file(update, context)
+    setup_shippering_db(update, context)
 
     schedule.every().day.at("23:00").do(callback_shipping, update.effective_chat.id)
     run_continuously()
@@ -95,7 +95,7 @@ def help(update: Update, context: CallbackContext):
 def shipping(update: Update, context: CallbackContext):
     global victory_text
 
-    setup_shippering_file(update, context)
+    setup_shippering_db(update, context)
     with open('counters.json') as counters_fp:
         try:
             counters = json.load(counters_fp)
@@ -168,7 +168,7 @@ def shipping(update: Update, context: CallbackContext):
 
 
 def last_ship(update: Update, context: CallbackContext):
-    setup_shippering_file(update, context)
+    setup_shippering_db(update, context)
     with open('counters.json') as counters_fp:
         text = 'Le coppie scelte negli ultimi giorni:\n\n'
         counters = json.load(counters_fp)
@@ -192,7 +192,7 @@ def last_ship(update: Update, context: CallbackContext):
 
 
 def top_ship(update: Update, context: CallbackContext):
-    setup_shippering_file(update, context)
+    setup_shippering_db(update, context)
     with open('counters.json') as counters_fp:
         text = 'Top lovers (coloro scelti il maggior numero di volte):\n\n'
         counters = json.load(counters_fp)
@@ -222,7 +222,7 @@ def restart_counter(update: Update):
 
 
 def reset(update: Update, context: CallbackContext):
-    setup_shippering_file(update, context)
+    setup_shippering_db(update, context)
 
     restart_counter(update)
     context.bot.send_message(chat_id=update.effective_chat.id, text='Reset completato', parse_mode='HTML')
@@ -257,7 +257,7 @@ def run_continuously(interval=5):
 
 def main():
 
-    updater = Updater(token=token, use_context=True)
+    updater = Updater(token=TOKEN, use_context=True)
 
     dispatcher = updater.dispatcher
     start_handler = CommandHandler('start', start)
@@ -274,8 +274,10 @@ def main():
     dispatcher.add_handler(top_ship_handler)
     dispatcher.add_handler(reset_handler)
 
-
-    updater.start_polling()
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+    updater.bot.setWebhook('https://shipperang.herokuapp.com/' + TOKEN)
 
     updater.idle()
 
