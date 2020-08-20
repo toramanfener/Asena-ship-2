@@ -234,6 +234,8 @@ def callback_shipping(chat_id):
     global deadline
     deadline += timedelta(days=1)
 
+    logging.info("CALLBACK TIMER")
+    logging.info(deadline)
     counters = redis_server.get(str(chat_id))
     counters = json.loads(counters)
 
@@ -253,6 +255,7 @@ def run_continuously(interval=5):
 
     continuous_thread = ScheduleThread()
     continuous_thread.start()
+    logging.info("THREAD RUNNING")
     return cease_continuous_run
 
 
