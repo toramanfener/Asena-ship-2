@@ -1,1 +1,1 @@
-web: python3 manage.py
+web: python3 bot.py
