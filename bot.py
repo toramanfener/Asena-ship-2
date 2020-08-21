@@ -140,7 +140,7 @@ def shipping(update: Update, context: CallbackContext):
 
     logging.info('DEADLINE E SCHEDULE DOVREBBERO COINCIDERE')
     logging.info(str(schedule.next_run()))
-    now = datetime.today()
+    now = datetime.utcnow() + timedelta(hours=2)
 
     logging.info('ADESSO')
     logging.info(str(now.date()))
