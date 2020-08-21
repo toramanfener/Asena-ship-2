@@ -21,7 +21,7 @@ TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 logging.info(os.environ.get('TELEGRAM_TOKEN'))
 
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=2)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=3)
 VICTORY = 30
 victory_text = ''
 redis_server = redis.from_url(os.getenv('REDIS_URL'))
@@ -72,7 +72,7 @@ def start(update: Update, context: CallbackContext):
 
     setup_shippering_db(update, context)
 
-    schedule.every().day.at("02:00").do(callback_shipping, update.effective_chat.id)
+    schedule.every().day.at("03:00").do(callback_shipping, update.effective_chat.id)
     run_continuously()
 
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
@@ -134,7 +134,18 @@ def shipping(update: Update, context: CallbackContext):
         user_id_shipped1 = counters['last_couple'][-2]
 
     # find out how much needs to be waited to ship again
+    logging.info('DEADLINE CORRENTE')
+    logging.info(str(deadline.date()))
+    logging.info(str(deadline.time()))
+
+    logging.info('DEADLINE E SCHEDULE DOVREBBERO COINCIDERE')
+    logging.info(str(schedule.next_run()))
     now = datetime.today()
+
+    logging.info('ADESSO')
+    logging.info(str(now.date()))
+    logging.info(str(now.time()))
+
     time_to_wait = deadline - now
     total_seconds = time_to_wait.seconds + math.floor(round(time_to_wait.microseconds / 1000000, 1))
     hours, remaining_seconds = divmod(total_seconds, 3600)
