@@ -254,7 +254,7 @@ def callback_shipping(chat_id):
     redis_server.set(str(chat_id), json.dumps(counters))
 
 
-def run_continuously(interval=5):
+def run_continuously(interval=1):
     cease_continuous_run = threading.Event()
 
     class ScheduleThread(threading.Thread):
@@ -263,7 +263,6 @@ def run_continuously(interval=5):
             while not cease_continuous_run.is_set():
                 schedule.run_pending()
                 time.sleep(interval)
-                logging.info("THREAD PENDING")
 
     continuous_thread = ScheduleThread()
     continuous_thread.start()
