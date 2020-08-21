@@ -263,6 +263,7 @@ def run_continuously(interval=5):
             while not cease_continuous_run.is_set():
                 schedule.run_pending()
                 time.sleep(interval)
+                logging.info("THREAD PENDING")
 
     continuous_thread = ScheduleThread()
     continuous_thread.start()
