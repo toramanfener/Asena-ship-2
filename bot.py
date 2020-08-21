@@ -10,7 +10,7 @@ import redis
 from telegram.ext import Updater, CommandHandler, CallbackContext, Filters
 from telegram import Update
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
@@ -19,9 +19,8 @@ logging.basicConfig(level=logging.DEBUG,
 
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
-logging.info(os.environ.get('TELEGRAM_TOKEN'))
 
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=3)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=12)
 VICTORY = 30
 victory_text = ''
 redis_server = redis.from_url(os.getenv('REDIS_URL'))
@@ -72,7 +71,7 @@ def start(update: Update, context: CallbackContext):
 
     setup_shippering_db(update, context)
 
-    schedule.every().day.at("03:00").do(callback_shipping, update.effective_chat.id)
+    schedule.every().day.at("12:00").do(callback_shipping, update.effective_chat.id)
     run_continuously()
 
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
@@ -100,7 +99,7 @@ def shipping(update: Update, context: CallbackContext):
 
     counters = redis_server.get(str(update.effective_chat.id))
     counters = json.loads(counters)
-
+    logging.info('PASSO DI QUI')
     if counters['shippable']:
         # last key is not counted for randomization since it's the last ship
         ship1, ship2 = tuple(
@@ -132,7 +131,7 @@ def shipping(update: Update, context: CallbackContext):
         # if the ship for today is picked, only need to pop from the stack
         user_id_shipped2 = counters['last_couple'][-1]
         user_id_shipped1 = counters['last_couple'][-2]
-
+    logging.info('PASSO DI QUI')
     # find out how much needs to be waited to ship again
     logging.info('DEADLINE CORRENTE')
     logging.info(str(deadline.date()))
@@ -263,6 +262,7 @@ def run_continuously(interval=1):
             while not cease_continuous_run.is_set():
                 schedule.run_pending()
                 time.sleep(interval)
+                logging.info('THREAD RUNNING')
 
     continuous_thread = ScheduleThread()
     continuous_thread.start()
