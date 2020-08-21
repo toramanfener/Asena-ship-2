@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.DEBUG,
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=12)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=10, minute=10)
 VICTORY = 30
 victory_text = ''
 redis_server = redis.from_url(os.getenv('REDIS_URL'))
@@ -71,7 +71,7 @@ def start(update: Update, context: CallbackContext):
 
     setup_shippering_db(update, context)
 
-    schedule.every().day.at("12:00").do(callback_shipping, update.effective_chat.id)
+    schedule.every().day.at("10:10").do(callback_shipping, update.effective_chat.id)
     run_continuously()
 
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
