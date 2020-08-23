@@ -273,7 +273,7 @@ def run_continuously(interval=1):
     return cease_continuous_run
 
 
-def ping_bot(interval=300):
+def ping_bot(interval=10):
 
     cease_continuous_run = threading.Event()
 
