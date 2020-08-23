@@ -275,6 +275,8 @@ def run_continuously(interval=1):
 def ping_message(update: Update, context: CallbackContext):
     logging.info('KEEP ALIVE')
     logging.info(schedule.next_run())
+    logging.info(update.message.text)
+    return
 
 
 def main():
