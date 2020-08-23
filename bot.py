@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.DEBUG,
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=12, minute=55)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=10)
 VICTORY = 30
 victory_text = ''
 redis_server = redis.from_url(os.getenv('REDIS_URL'))
@@ -71,8 +71,6 @@ def start(update: Update, context: CallbackContext):
 
     setup_shippering_db(update, context)
 
-    schedule.every().day.at("12:55").do(callback_shipping, update.effective_chat.id)
-    run_continuously()
 
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
            'Use /help for more info.'
@@ -162,8 +160,13 @@ def shipping(update: Update, context: CallbackContext):
     if victory_text:
         text += victory_text + '\n\n'
     text += 'La coppia del giorno:\n\n' if counters['shippable'] else 'La coppia del giorno è già stata scelta:\n\n'
-    text += f'<a href="tg://user?id={user_id_shipped1}">{first_name1} {last_name1}</a> ' if last_name1 else f'<a href="tg://user?id={user_id_shipped1}">{first_name1}</a>'
-    text += f'+ <a href="tg://user?id={user_id_shipped2}">{first_name2} {last_name2}</a> = ❤\n' if last_name2 else f'+ <a href="tg://user?id={user_id_shipped2}">{first_name2}</a> = ❤\n'
+    if counters['shippable']:
+        text += f'<a href="tg://user?id={user_id_shipped1}">{first_name1} {last_name1}</a> ' if last_name1 else f'<a href="tg://user?id={user_id_shipped1}">{first_name1}</a>'
+        text += f'+ <a href="tg://user?id={user_id_shipped2}">{first_name2} {last_name2}</a> = ❤\n' if last_name2 else f'+ <a href="tg://user?id={user_id_shipped2}">{first_name2}</a> = ❤\n'
+    else:
+        text += f'{first_name1} {last_name1} ' if last_name1 else f'{first_name1}'
+        text += f'+ {first_name2} {last_name2} = ❤\n' if last_name2 else f'+ {first_name2} = ❤\n'
+
     text += f'La nuova coppia del giorno potrà essere scelta tra {hours} ore, {minutes} minuti e {seconds} secondi'
 
     counters['shippable'] = False
@@ -271,6 +274,9 @@ def run_continuously(interval=1):
 
 
 def main():
+
+    schedule.every().day.at("10:00").do(callback_shipping, -1001257793212)
+    run_continuously()
 
     updater = Updater(token=TOKEN, use_context=True)
 
