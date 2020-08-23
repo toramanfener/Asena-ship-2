@@ -7,6 +7,7 @@ import schedule
 import time
 import threading
 import redis
+import subprocess
 from telegram.ext import Updater, CommandHandler, CallbackContext, Filters, MessageHandler
 from telegram import Update
 from dotenv import load_dotenv
@@ -272,11 +273,24 @@ def run_continuously(interval=1):
     return cease_continuous_run
 
 
-def ping_message(update: Update, context: CallbackContext):
-    logging.info('KEEP ALIVE')
-    logging.info(schedule.next_run())
-    logging.info(update.message.text)
-    return
+def ping_bot(interval=300):
+
+    cease_continuous_run = threading.Event()
+
+    class PingThread(threading.Thread):
+        @classmethod
+        def run(cls):
+            while not cease_continuous_run.is_set():
+                time.sleep(interval)
+                if subprocess.call(['ping', '-c', '1', 'https://shipperang.herokuapp.com/']) == 0:
+                    logging.info('KEEP ALIVE')
+                    logging.info(schedule.next_run())
+                else:
+                    logging.info('Could not ping')
+
+    ping_thread = PingThread()
+    ping_thread.start()
+    return cease_continuous_run
 
 
 def main():
@@ -284,6 +298,7 @@ def main():
     schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
     run_continuously()
 
+    ping_bot()
     updater = Updater(token=TOKEN, use_context=True)
 
     dispatcher = updater.dispatcher
@@ -293,7 +308,6 @@ def main():
     last_ship_handler = CommandHandler('last', last_ship, Filters.group)
     top_ship_handler = CommandHandler('top', top_ship, Filters.group)
     reset_handler = CommandHandler('reset', reset, Filters.group)
-    ping_message_handler = MessageHandler(Filters.text, ping_message)
 
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(help_handler)
@@ -301,7 +315,6 @@ def main():
     dispatcher.add_handler(last_ship_handler)
     dispatcher.add_handler(top_ship_handler)
     dispatcher.add_handler(reset_handler)
-    dispatcher.add_handler(ping_message_handler)
 
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT),
