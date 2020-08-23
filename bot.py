@@ -275,14 +275,14 @@ def run_continuously(interval=1):
 def send_continuously(updater :Updater, interval=15):
     cease_continuous_run = threading.Event()
 
-    class ScheduleThread(threading.Thread):
+    class SendThread(threading.Thread):
         @classmethod
         def run(cls):
             while not cease_continuous_run.is_set():
                 updater.bot.send_message(69915391, 'Not idle')
                 time.sleep(interval)
 
-    continuous_thread = ScheduleThread()
+    continuous_thread = SendThread()
     continuous_thread.start()
     logging.info("THREAD RUNNING")
     return cease_continuous_run
