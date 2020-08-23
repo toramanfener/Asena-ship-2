@@ -272,6 +272,21 @@ def run_continuously(interval=1):
     return cease_continuous_run
 
 
+def send_continuously(updater :Updater, interval=15):
+    cease_continuous_run = threading.Event()
+
+    class ScheduleThread(threading.Thread):
+        @classmethod
+        def run(cls):
+            while not cease_continuous_run.is_set():
+                updater.bot.send_message(69915391, 'Not idle')
+                time.sleep(interval)
+
+    continuous_thread = ScheduleThread()
+    continuous_thread.start()
+    logging.info("THREAD RUNNING")
+    return cease_continuous_run
+
 def main():
 
     updater = Updater(token=TOKEN, use_context=True)
@@ -298,6 +313,7 @@ def main():
 
     schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
     run_continuously()
+    send_continuously(updater)
 
     updater.idle()
 
