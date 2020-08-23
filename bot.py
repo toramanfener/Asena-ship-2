@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.DEBUG,
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=10)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=14)
 VICTORY = 30
 victory_text = ''
 redis_server = redis.from_url(os.getenv('REDIS_URL'))
@@ -275,7 +275,7 @@ def run_continuously(interval=1):
 
 def main():
 
-    schedule.every().day.at("10:00").do(callback_shipping, -1001257793212)
+    schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
     run_continuously()
 
     updater = Updater(token=TOKEN, use_context=True)
