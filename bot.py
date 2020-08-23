@@ -273,26 +273,6 @@ def run_continuously(interval=1):
     return cease_continuous_run
 
 
-def ping_bot(interval=10):
-
-    cease_continuous_run = threading.Event()
-
-    class PingThread(threading.Thread):
-        @classmethod
-        def run(cls):
-            while not cease_continuous_run.is_set():
-                time.sleep(interval)
-                if ping('https://shipperang.herokuapp.com/'):
-                    logging.info('KEEP ALIVE')
-                    logging.info(schedule.next_run())
-                else:
-                    logging.info('Could not ping')
-
-    ping_thread = PingThread()
-    ping_thread.start()
-    return cease_continuous_run
-
-
 def main():
 
     updater = Updater(token=TOKEN, use_context=True)
@@ -319,7 +299,6 @@ def main():
 
     schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
     run_continuously()
-    ping_bot()
 
     updater.idle()
 
