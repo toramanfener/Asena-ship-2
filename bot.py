@@ -7,11 +7,11 @@ import schedule
 import time
 import threading
 import redis
-import subprocess
-from telegram.ext import Updater, CommandHandler, CallbackContext, Filters, MessageHandler
+from telegram.ext import Updater, CommandHandler, CallbackContext, Filters
 from telegram import Update
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from pythonping import ping
 
 load_dotenv()
 
@@ -282,7 +282,7 @@ def ping_bot(interval=10):
         def run(cls):
             while not cease_continuous_run.is_set():
                 time.sleep(interval)
-                if subprocess.call(['ping', '-c', '1', 'https://shipperang.herokuapp.com/']) == 0:
+                if ping('https://shipperang.herokuapp.com/'):
                     logging.info('KEEP ALIVE')
                     logging.info(schedule.next_run())
                 else:
@@ -294,7 +294,6 @@ def ping_bot(interval=10):
 
 
 def main():
-
 
     updater = Updater(token=TOKEN, use_context=True)
 
