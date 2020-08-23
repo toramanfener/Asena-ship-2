@@ -272,7 +272,7 @@ def run_continuously(interval=1):
     return cease_continuous_run
 
 
-def send_continuously(updater :Updater, interval=15):
+def send_continuously(updater :Updater, interval=10):
     cease_continuous_run = threading.Event()
 
     class SendThread(threading.Thread):
