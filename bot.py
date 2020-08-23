@@ -11,7 +11,6 @@ from telegram.ext import Updater, CommandHandler, CallbackContext, Filters
 from telegram import Update
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from pythonping import ping
 
 load_dotenv()
 
@@ -72,7 +71,7 @@ def start(update: Update, context: CallbackContext):
 
     setup_shippering_db(update, context)
 
-
+    logging.info(update.effective_chat.id)
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
            'Use /help for more info.'
     context.bot.send_message(chat_id=update.effective_chat.id, text=text)
