@@ -7,7 +7,7 @@ import schedule
 import time
 import threading
 import redis
-from telegram.ext import Updater, CommandHandler, CallbackContext, Filters
+from telegram.ext import Updater, CommandHandler, CallbackContext, Filters, MessageHandler
 from telegram import Update
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
@@ -265,12 +265,16 @@ def run_continuously(interval=1):
             while not cease_continuous_run.is_set():
                 schedule.run_pending()
                 time.sleep(interval)
-                logging.info("THREAD RUNNING")
 
     continuous_thread = ScheduleThread()
     continuous_thread.start()
     logging.info("THREAD RUNNING")
     return cease_continuous_run
+
+
+def ping_message_handler(update: Update, context: CallbackContext):
+    logging.info('KEEP ALIVE')
+    logging.info(schedule.next_run())
 
 
 def main():
@@ -287,6 +291,7 @@ def main():
     last_ship_handler = CommandHandler('last', last_ship, Filters.group)
     top_ship_handler = CommandHandler('top', top_ship, Filters.group)
     reset_handler = CommandHandler('reset', reset, Filters.group)
+    ping_message_handler = MessageHandler(Filters.text, )
 
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(help_handler)
@@ -294,6 +299,7 @@ def main():
     dispatcher.add_handler(last_ship_handler)
     dispatcher.add_handler(top_ship_handler)
     dispatcher.add_handler(reset_handler)
+    dispatcher.add_handler(ping_message_handler)
 
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT),
