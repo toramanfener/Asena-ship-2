@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.DEBUG,
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 
 
-deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=10, minute=10)
+deadline = datetime(datetime.today().year, datetime.today().month, datetime.today().day, hour=12, minute=55)
 VICTORY = 30
 victory_text = ''
 redis_server = redis.from_url(os.getenv('REDIS_URL'))
