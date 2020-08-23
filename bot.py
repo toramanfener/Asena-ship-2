@@ -71,7 +71,7 @@ def start(update: Update, context: CallbackContext):
 
     setup_shippering_db(update, context)
 
-    schedule.every().day.at("10:10").do(callback_shipping, update.effective_chat.id)
+    schedule.every().day.at("12:55").do(callback_shipping, update.effective_chat.id)
     run_continuously()
 
     text = '😄 Hello! SHIPPERANG is a bot that will choose a couple of the day in your chat.\n\n ' \
