@@ -295,10 +295,7 @@ def ping_bot(interval=300):
 
 def main():
 
-    schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
-    run_continuously()
 
-    ping_bot()
     updater = Updater(token=TOKEN, use_context=True)
 
     dispatcher = updater.dispatcher
@@ -320,6 +317,10 @@ def main():
                           port=int(PORT),
                           url_path=TOKEN)
     updater.bot.setWebhook('https://shipperang.herokuapp.com/' + TOKEN)
+
+    schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
+    run_continuously()
+    ping_bot()
 
     updater.idle()
 
