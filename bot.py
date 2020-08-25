@@ -97,8 +97,17 @@ def shipping(update: Update, context: CallbackContext):
 
     counters = redis_server.get(str(update.effective_chat.id))
     counters = json.loads(counters)
+
+    now = datetime.utcnow()
+    this_moment = str(datetime(datetime.today().year, datetime.today().month, datetime.today().day,
+                               hour=now.hour, minute=now.minute, second=now.second,
+                               microsecond=now.microsecond))
+    last_update = datetime.strptime(counters['last_update'], '%Y-%m-%d %H:%M:%S.%f')
     logging.info('PASSO DI QUI')
-    if counters['shippable']:
+    # we can either ship another time if the flag has been updated
+    # or if the scheduler missed it, which, means that the flag remained false
+    # and the last update was before the deadline, and now we got past the deadline
+    if (counters['shippable']) or (not counters['shippable'] and last_update < deadline < this_moment):
         # last key is not counted for randomization since it's the last ship
         ship1, ship2 = tuple(
             random.sample(range(0, len(counters['user_counters'].keys())), k=2))
@@ -123,7 +132,10 @@ def shipping(update: Update, context: CallbackContext):
         if len(winners) > 0:
             victory_text = victory(update, context, *winners)
 
-
+        now = datetime.utcnow()
+        counters['last_update'] = str(datetime(datetime.today().year, datetime.today().month, datetime.today().day,
+                                               hour=now.hour, minute=now.minute, second=now.second,
+                                               microsecond=now.microsecond))
 
     else:
         # if the ship for today is picked, only need to pop from the stack
@@ -272,21 +284,6 @@ def run_continuously(interval=1):
     return cease_continuous_run
 
 
-def send_continuously(updater :Updater, interval=10):
-    cease_continuous_run = threading.Event()
-
-    class SendThread(threading.Thread):
-        @classmethod
-        def run(cls):
-            while not cease_continuous_run.is_set():
-                updater.bot.send_message(69915391, 'Not idle')
-                time.sleep(interval)
-
-    continuous_thread = SendThread()
-    continuous_thread.start()
-    logging.info("THREAD RUNNING")
-    return cease_continuous_run
-
 def main():
 
     updater = Updater(token=TOKEN, use_context=True)
@@ -313,7 +310,6 @@ def main():
 
     schedule.every().day.at("14:00").do(callback_shipping, -1001257793212)
     run_continuously()
-    send_continuously(updater)
 
     updater.idle()
 
