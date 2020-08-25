@@ -99,9 +99,9 @@ def shipping(update: Update, context: CallbackContext):
     counters = json.loads(counters)
 
     now = datetime.utcnow()
-    this_moment = str(datetime(datetime.today().year, datetime.today().month, datetime.today().day,
-                               hour=now.hour, minute=now.minute, second=now.second,
-                               microsecond=now.microsecond))
+    this_moment = datetime(datetime.today().year, datetime.today().month, datetime.today().day,
+                           hour=now.hour, minute=now.minute, second=now.second,
+                           microsecond=now.microsecond)
     last_update = datetime.strptime(counters['last_update'], '%Y-%m-%d %H:%M:%S.%f')
     logging.info('PASSO DI QUI')
     # we can either ship another time if the flag has been updated
