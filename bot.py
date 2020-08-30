@@ -103,12 +103,14 @@ def shipping(update: Update, context: CallbackContext):
                            hour=now.hour, minute=now.minute, second=now.second,
                            microsecond=now.microsecond)
     last_update = datetime.strptime(counters['last_update'], '%Y-%m-%d %H:%M:%S.%f')
-    logging.info('PASSO DI QUI')
+    logging.info('TEMPI')
+    logging.info(last_update)
+    logging.info(deadline)
+    logging.info(now)
     # we can either ship another time if the flag has been updated
     # or if the scheduler missed it, which, means that the flag remained false
     # and the last update was before the deadline, and now we got past the deadline
     if (counters['shippable']) or (not counters['shippable'] and last_update < deadline < this_moment):
-        # last key is not counted for randomization since it's the last ship
         ship1, ship2 = tuple(
             random.sample(range(0, len(counters['user_counters'].keys())), k=2))
 
